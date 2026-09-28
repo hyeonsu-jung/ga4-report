@@ -10,9 +10,9 @@ const config = {
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
     redirectUri:
       process.env.GOOGLE_REDIRECT_URI ||
-      (process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}/auth/google/callback`
-        : 'https://ga4-media-report.vercel.app/auth/google/callback'),
+      (process.env.VERCEL
+        ? 'https://ga4-media-report.vercel.app/auth/google/callback'
+        : `http://localhost:${process.env.PORT || 3000}/auth/google/callback`),
     scopes: [
       'https://www.googleapis.com/auth/analytics.readonly',
       'openid',
