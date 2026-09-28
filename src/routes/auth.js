@@ -50,9 +50,8 @@ router.get('/google/callback', async (req, res) => {
 /** 3) 로그아웃 */
 router.post('/logout', async (req, res) => {
   await googleAuth.revokeTokens(req.session);
-  req.session.destroy(() => {
-    res.json({ ok: true });
-  });
+  req.session = null;
+  res.json({ ok: true });
 });
 
 module.exports = router;

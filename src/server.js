@@ -2,7 +2,7 @@
 
 const path = require('path');
 const express = require('express');
-const session = require('express-session');
+const cookieSession = require('cookie-session');
 const config = require('./config');
 
 const authRoutes = require('./routes/auth');
@@ -16,17 +16,13 @@ const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERC
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '1mb' }));
 app.use(
-  session({
+  cookieSession({
     name: 'ga4report.sid',
-    secret: config.sessionSecret,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: isProduction, // Vercel 및 HTTPS 배포 환경 대응
-      maxAge: 1000 * 60 * 60 * 8,
-    },
+    keys: [config.sessionSecret || 'ga4-report-dev-secret', 'ga4-report-fallback-secret'],
+    maxAge: 1000 * 60 * 60 * 8, // 8시간
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isProduction,
   })
 );
 
