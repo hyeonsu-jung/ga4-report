@@ -11,6 +11,8 @@ const mediaRoutes = require('./routes/media');
 
 const app = express();
 
+const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL;
+
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '1mb' }));
 app.use(
@@ -22,7 +24,7 @@ app.use(
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
-      secure: false, // HTTPS 배포 시 true 로 변경
+      secure: isProduction, // Vercel 및 HTTPS 배포 환경 대응
       maxAge: 1000 * 60 * 60 * 8,
     },
   })
@@ -55,13 +57,15 @@ app.use((err, req, res, next) => {
   res.status(status).json(payload);
 });
 
-app.listen(config.port, () => {
-  console.log(`\n  GA4 PPT 분석 보고서 솔루션`);
-  console.log(`  ▶ http://localhost:${config.port}`);
-  if (!config.isGoogleConfigured) {
-    console.log('  ⚠ .env 의 GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET 를 설정해야 로그인할 수 있습니다.');
-  }
-  console.log('');
-});
+if (!process.env.VERCEL) {
+  app.listen(config.port, () => {
+    console.log(`\n  GA4 PPT 분석 보고서 솔루션`);
+    console.log(`  ▶ http://localhost:${config.port}`);
+    if (!config.isGoogleConfigured) {
+      console.log('  ⚠ .env 의 GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET 를 설정해야 로그인할 수 있습니다.');
+    }
+    console.log('');
+  });
+}
 
 module.exports = app;
