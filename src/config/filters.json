@@ -1,0 +1,69 @@
+{
+  "_comment": [
+    "분석 항목별 필터 조건 정의 파일 (기획서 8.2 필터 관리).",
+    "코드 수정 없이 이 파일만 변경하면 필터 조건이 반영됩니다.",
+    "지원 연산자: contains, not_contains, exact, not_exact, begins_with, ends_with,",
+    "             regex, not_regex, in_list, not_in_list",
+    "caseSensitive 기본값은 false 입니다."
+  ],
+
+  "page_path": {
+    "conditions": []
+  },
+
+  "natural_inflow": {
+    "conditions": [
+      { "dimension": "sessionCampaignName", "operator": "contains", "value": "(" },
+      { "dimension": "sessionSourceMedium", "operator": "not_contains", "value": "cpc" }
+    ]
+  },
+
+  "campaign_inflow": {
+    "conditions": [
+      { "dimension": "sessionManualCampaignName", "operator": "not_contains", "value": "(" }
+    ]
+  },
+
+  "custom_event": {
+    "conditions": [
+      {
+        "dimension": "eventName",
+        "operator": "not_in_list",
+        "values": [
+          "page_view",
+          "session_start",
+          "scroll",
+          "click",
+          "user_engagement",
+          "first_visit",
+          "screen_view"
+        ]
+      },
+      {
+        "dimension": "eventName",
+        "operator": "not_regex",
+        "value": "^(form_start|form_submit|file_download|video_(start|progress|complete)|view_search_results|session_end|app_(remove|update|clear_data|exception)|os_update|firebase_.*|notification_.*|dynamic_link_.*|ad_(click|exposure|impression|query|reward)|in_app_purchase|screen_view)$",
+        "_comment": "GA4 자동 수집/향상된 측정 이벤트 제외용 정규식. 운영 기준에 맞춰 수정하세요."
+      }
+    ]
+  },
+
+  "demographics": {
+    "conditions": [
+      { "dimension": "userGender", "operator": "not_exact", "value": "unknown" },
+      { "dimension": "userAgeBracket", "operator": "not_exact", "value": "unknown" }
+    ]
+  },
+
+  "device": {
+    "conditions": []
+  },
+
+  "region": {
+    "conditions": [],
+    "_example": [
+      "미설정 지역을 제외하려면 아래 조건을 conditions 에 추가하세요.",
+      "{ \"dimension\": \"region\", \"operator\": \"not_exact\", \"value\": \"(not set)\" }"
+    ]
+  }
+}

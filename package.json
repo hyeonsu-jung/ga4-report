@@ -1,0 +1,25 @@
+{
+  "name": "ga4-ppt-report",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GA4 OAuth 로그인 → 속성/기간 선택 → GA4 Data API 조회 → 분석 → PPT 자동 생성/다운로드 솔루션",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "googleapis": "^144.0.0",
+    "iconv-lite": "^0.6.3",
+    "multer": "^2.4.0",
+    "pptxgenjs": "^3.12.0"
+  }
+}

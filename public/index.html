@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>마케팅 리포트 자동화</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <div class="brand">
+        <span class="brand__mark">GA4</span>
+        <div>
+          <strong>마케팅 리포트 자동화</strong>
+          <small id="brandSub">OAuth 로그인 → 속성/기간 선택 → 데이터 수집 → PPT 다운로드</small>
+        </div>
+      </div>
+      <nav class="tabs" role="tablist" aria-label="기능 선택">
+        <button type="button" class="tab is-active" role="tab" data-view="ga4" aria-selected="true">
+          GA4 PPT 분석 보고서
+        </button>
+        <button type="button" class="tab" role="tab" data-view="media" aria-selected="false">
+          매체별 엑셀 데이터 취합
+        </button>
+      </nav>
+      <div id="authArea" class="auth-area"></div>
+    </div>
+  </header>
+
+  <main class="layout view" id="view-ga4">
+    <!-- ── 설정 패널 ───────────────────────────── -->
+    <section class="panel" id="setupPanel">
+      <div id="loginGate" class="gate hidden">
+        <h2>GA4 계정으로 로그인</h2>
+        <p>보고서를 생성할 GA4 속성에 접근 권한이 있는 Google 계정으로 로그인하세요.</p>
+        <a class="btn btn--primary btn--lg" href="/auth/google">Google 계정으로 GA4 로그인</a>
+        <p class="gate__note">읽기 전용 권한(analytics.readonly)만 요청합니다.</p>
+        <p class="gate__note">
+          연동 전 결과 형태만 확인하려면
+          <button type="button" id="demoBtn" class="linklike">샘플 데이터로 미리보기</button>
+        </p>
+      </div>
+
+      <div id="setupBody" class="hidden">
+        <!-- STEP 1 -->
+        <div class="step">
+          <div class="step__head"><span class="step__no">1</span><h3>GA4 속성 선택</h3></div>
+          <div class="step__body">
+            <div class="field">
+              <label for="propertySearch">속성 검색</label>
+              <input id="propertySearch" type="search" placeholder="속성명 또는 속성 ID 검색" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="propertySelect">GA4 속성</label>
+              <select id="propertySelect"><option value="">불러오는 중…</option></select>
+            </div>
+            <div id="propertyMeta" class="meta-box hidden"></div>
+          </div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="step">
+          <div class="step__head"><span class="step__no">2</span><h3>분석 기간 설정</h3></div>
+          <div class="step__body">
+            <div id="presetGroup" class="chip-group"></div>
+            <div id="customRange" class="field-row hidden">
+              <div class="field">
+                <label for="startDate">시작일</label>
+                <input id="startDate" type="date" />
+              </div>
+              <div class="field">
+                <label for="endDate">종료일</label>
+                <input id="endDate" type="date" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="compareMode">비교 기간</label>
+              <select id="compareMode"></select>
+            </div>
+            <div id="rangePreview" class="meta-box"></div>
+          </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div class="step">
+          <div class="step__head"><span class="step__no">3</span><h3>분석 항목</h3></div>
+          <div class="step__body">
+            <div id="sectionList" class="section-list"></div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="previewBtn" class="btn btn--ghost">데이터 미리보기</button>
+          <button id="downloadBtn" class="btn btn--primary">PPT 보고서 생성 · 다운로드</button>
+        </div>
+        <div id="statusBar" class="status hidden"></div>
+      </div>
+    </section>
+
+    <!-- ── 결과 패널 ───────────────────────────── -->
+    <section class="result" id="resultPanel">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-state__icon">📊</div>
+        <h2>분석 결과 미리보기</h2>
+        <p>좌측에서 속성과 기간을 선택한 뒤 <strong>데이터 미리보기</strong>를 실행하세요.<br />
+           PPT에 들어갈 표·차트·분석 문구를 먼저 확인할 수 있습니다.</p>
+      </div>
+      <div id="reportHead" class="report-head hidden"></div>
+      <div id="reportBody"></div>
+    </section>
+  </main>
+
+  <!-- ══════════════ 매체별 엑셀 데이터 취합 ══════════════ -->
+  <main class="layout view hidden" id="view-media">
+    <section class="panel">
+      <div class="step">
+        <div class="step__head"><span class="step__no">1</span><h3>매체 RAW 파일 업로드</h3></div>
+        <div class="step__body">
+          <label class="dropzone" id="dropzone" for="mediaFiles">
+            <input id="mediaFiles" type="file" multiple accept=".xlsx,.xlsm,.csv,.tsv,.txt" />
+            <strong>파일을 끌어다 놓거나 클릭해서 선택</strong>
+            <span id="dropHint">네이버 · 메타 · 카카오 · 구글 등 매체 다운로드 파일 (.xlsx · .csv)</span>
+          </label>
+          <p class="hint">
+            처음이라면 <button type="button" id="mediaDemoBtn" class="linklike">샘플 RAW 파일로 체험</button>
+          </p>
+          <div class="field">
+            <label for="costBasis">광고비 기준</label>
+            <select id="costBasis">
+              <option value="excl">VAT 별도로 통일</option>
+              <option value="incl">VAT 포함으로 통일</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step__head"><span class="step__no">2</span><h3>GA4 데이터 연동</h3></div>
+        <div class="step__body">
+          <div class="chip-group" id="ga4ModeGroup">
+            <button type="button" class="chip is-active" data-mode="none">연동 안 함</button>
+            <button type="button" class="chip" data-mode="ga4">GA4 속성 연동</button>
+            <button type="button" class="chip" data-mode="demo">샘플 GA4</button>
+          </div>
+          <div id="ga4PropertyBox" class="hidden">
+            <div id="mediaLoginNote" class="meta-box hidden">
+              GA4 로그인이 필요합니다. <a href="/auth/google">Google 계정으로 로그인</a>
+            </div>
+            <div class="field" id="mediaPropertyField">
+              <label for="mediaPropertySelect">GA4 속성</label>
+              <select id="mediaPropertySelect"><option value="">로그인 후 선택</option></select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="mediaStart">분석 시작일</label>
+              <input id="mediaStart" type="date" />
+            </div>
+            <div class="field">
+              <label for="mediaEnd">분석 종료일</label>
+              <input id="mediaEnd" type="date" />
+            </div>
+          </div>
+          <p class="hint" id="mediaRangeHint">업로드한 매체 데이터의 기간이 기본값으로 채워집니다.</p>
+          <label class="check" id="includeSectionsLabel">
+            <input type="checkbox" id="includeGa4Sections" />
+            <span>GA4 기본 분석(7개 영역)도 보고서에 포함</span>
+          </label>
+          <div class="field hidden" id="mediaCompareField">
+            <label for="mediaCompare">GA4 기본 분석 비교 기간</label>
+            <select id="mediaCompare">
+              <option value="previous">직전 기간 대비</option>
+              <option value="previousYear">전년 동기간 대비</option>
+              <option value="none">비교 없음</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="integratedPreviewBtn" class="btn btn--ghost">통합 분석 미리보기</button>
+        <button id="integratedPptBtn" class="btn btn--primary">통합 보고서 PPT 다운로드</button>
+        <div class="actions__row">
+          <button id="standardXlsxBtn" class="btn btn--ghost btn--sm">표준 데이터 엑셀 (전체 기간)</button>
+          <button id="integratedXlsxBtn" class="btn btn--ghost btn--sm" disabled>GA4 통합 분석 엑셀 (선택 기간)</button>
+        </div>
+        <p class="hint" id="xlsxHint"></p>
+      </div>
+      <div id="mediaStatus" class="status hidden"></div>
+    </section>
+
+    <section class="result">
+      <div class="empty-state" id="mediaEmpty">
+        <div class="empty-state__icon">🗂️</div>
+        <h2>매체별 RAW 데이터를 올려 주세요</h2>
+        <p>헤더 위치 · 매체 · 컬럼 · VAT 기준을 자동으로 인식해 <strong>표준 스키마</strong>로 통합합니다.<br />
+           자동 인식 결과는 파일별로 직접 보정할 수 있습니다.</p>
+      </div>
+      <div id="mediaFilesCard"></div>
+      <div id="mediaSummaryCard"></div>
+      <div id="integratedResult"></div>
+      <div id="mediaPreviewCard"></div>
+    </section>
+  </main>
+
+  <div id="overlay" class="overlay hidden">
+    <div class="overlay__box">
+      <div class="spinner"></div>
+      <p id="overlayText">GA4 데이터를 수집하고 있습니다…</p>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+  <script src="/media.js"></script>
+</body>
+</html>

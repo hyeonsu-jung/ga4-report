@@ -1,0 +1,7 @@
+node_modules/
+.env
+*.pptx
+tmp/
+.DS_Store
+npm-debug.log*
+/sample_*.xlsx
