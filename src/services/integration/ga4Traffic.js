@@ -72,12 +72,6 @@ async function runWithFallback(auth, propertyId, buildBody) {
  */
 async function fetchPaidTraffic(auth, propertyId, range) {
   const dateRanges = [{ startDate: range.startDate, endDate: range.endDate }];
-  const dimensionFilter = {
-    filter: {
-      fieldName: 'sessionMedium',
-      stringFilter: { matchType: 'FULL_REGEXP', value: GA4_PAID_MEDIUM.source, caseSensitive: false },
-    },
-  };
 
   const rows = [];
   let metricsUsed = null;
@@ -91,7 +85,6 @@ async function fetchPaidTraffic(auth, propertyId, range) {
         { name: 'sessionCampaignName' },
       ],
       metrics: (metricsUsed || m).map((name) => ({ name })),
-      dimensionFilter,
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
       keepEmptyRows: false,

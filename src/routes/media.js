@@ -251,7 +251,7 @@ async function buildContext(req) {
     range,
     basis: ws.basis,
     fileCount: ws.files.filter((f) => f.status !== 'error').length,
-    integration: integrate(rows, ga4),
+    integration: integrate(rows, ga4, { selectedCampaign: body.selectedCampaign }),
     ga4Report,
     isSample: Boolean(body.demoGa4),
   };
@@ -268,6 +268,8 @@ integrated.post(
       basis: ctx.basis,
       isSample: ctx.isSample,
       hasGa4: r.hasGa4,
+      selectedCampaign: r.selectedCampaign,
+      availableGa4Campaigns: r.availableGa4Campaigns,
       hasRevenue: r.hasRevenue,
       paidShare: r.paidShare,
       correlation: r.correlation,

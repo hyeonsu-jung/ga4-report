@@ -154,6 +154,9 @@ const Media = (() => {
     );
 
     $('includeGa4Sections').addEventListener('change', syncCompareField);
+    $('mediaCampaignSelect').addEventListener('change', () => {
+      if (st.ga4Mode !== 'none') preview();
+    });
 
     $('integratedPreviewBtn').addEventListener('click', preview);
     $('integratedPptBtn').addEventListener('click', () =>
@@ -239,6 +242,7 @@ const Media = (() => {
     st.ga4Mode = mode;
     document.querySelectorAll('#ga4ModeGroup .chip').forEach((c) => c.classList.toggle('is-active', c.dataset.mode === mode));
     $('ga4PropertyBox').classList.toggle('hidden', mode !== 'ga4');
+    $('mediaCampaignBox').classList.toggle('hidden', mode === 'none');
     $('includeGa4Sections').disabled = mode === 'none';
     if (mode === 'none') $('includeGa4Sections').checked = false;
     syncCompareField();
@@ -292,6 +296,7 @@ const Media = (() => {
       startDate: $('mediaStart').value || undefined,
       endDate: $('mediaEnd').value || undefined,
       includeGa4Sections: $('includeGa4Sections').checked,
+      selectedCampaign: $('mediaCampaignSelect').value || 'all',
     };
     if (st.ga4Mode === 'demo') body.demoGa4 = true;
     if (st.ga4Mode === 'ga4') {
@@ -586,7 +591,24 @@ const Media = (() => {
       .join('')}</ul></div>`;
   }
 
+  function populateCampaignSelect(campaignList = [], selected = 'all') {
+    const select = $('mediaCampaignSelect');
+    if (!select) return;
+    const current = selected || select.value || 'all';
+    const options = [
+      '<option value="all">전체 (모든 캠페인)</option>',
+      ...campaignList.map(
+        (c) => `<option value="${escapeHtml(c.campaign)}">${escapeHtml(c.campaign)} (${fmtNum(c.sessions)} 세션)</option>`
+      ),
+    ];
+    select.innerHTML = options.join('');
+    select.value = current;
+  }
+
   function renderIntegrated(d) {
+    if (d.hasGa4 && d.availableGa4Campaigns) {
+      populateCampaignSelect(d.availableGa4Campaigns, d.selectedCampaign);
+    }
     const t = d.totals;
     const ga4 = d.hasGa4;
     const kpis = [
