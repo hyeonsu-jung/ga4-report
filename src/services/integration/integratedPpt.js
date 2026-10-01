@@ -429,16 +429,13 @@ function mediaGa4(pptx, data, page) {
 function campaignSlide(pptx, data, page) {
   const slide = newSlide(pptx);
   const r = data.integration;
-  const s = r.matchStats;
   const top = r.byCampaign.slice(0, 10);
 
   addHeader(slide, {
     no: 'M4',
     en: 'CAMPAIGN',
     title: '캠페인 성과',
-    sub: r.hasGa4
-      ? '매체 캠페인명 ↔ GA4 캠페인(utm_campaign) 매칭 — 대소문자·공백·기호 무시 완전 일치'
-      : '매체 보고 기준 캠페인 성과 (GA4 미연동)',
+    sub: '매체 보고 기준 캠페인 성과 (GA4 미연동)',
   });
 
   if (!top.length) {
@@ -448,20 +445,7 @@ function campaignSlide(pptx, data, page) {
   }
 
   const topCampaign = r.byCampaign[0];
-  if (r.hasGa4) {
-    kpiRow(slide, [
-      { label: '캠페인 수', value: formatNumber(s.campaigns), unit: '개', cap: `${r.byMedia.length}개 매체` },
-      { label: 'GA4 매칭 캠페인', value: `${s.matched}/${s.campaigns}`, unit: '', cap: `광고비 기준 ${pct(s.matchedCostShare)}` },
-      moneyKpi('미매칭 광고비', s.unmatchedCost, s.campaigns - s.matched ? `${s.campaigns - s.matched}개 캠페인` : '전체 매칭'),
-      {
-        label: '최대 집행 캠페인 비중',
-        value: pct(topCampaign.costShare).replace('%', ''),
-        unit: '%',
-        cap: clip(topCampaign.campaign, 1.2, 7.5),
-      },
-    ]);
-  } else {
-    kpiRow(slide, [
+  kpiRow(slide, [
       { label: '캠페인 수', value: formatNumber(r.byCampaign.length), unit: '개', cap: `${r.byMedia.length}개 매체` },
       {
         label: '최대 집행 캠페인 비중',
@@ -476,21 +460,10 @@ function campaignSlide(pptx, data, page) {
         cap: '',
       },
       { label: '평균 CPC', value: won(r.totals.cpc), unit: '원', cap: `CTR ${pct(r.totals.ctr, 2)}` },
-    ]);
-  }
+  ]);
 
   sectionLabel(slide, `광고비 상위 ${top.length}개 캠페인`, LAYOUT.leftX, LAYOUT.bodyTop, LAYOUT.leftW, '단위: 원 · 회');
-  const columns = r.hasGa4
-    ? [
-        { label: '매체', w: 0.5 },
-        { label: '캠페인', w: 1.45 },
-        { label: '광고비', w: 0.88, align: 'right' },
-        { label: '클릭', w: 0.6, align: 'right' },
-        { label: 'GA4 세션', w: 0.74, align: 'right' },
-        { label: r.hasRevenue ? 'ROAS' : '전환', w: 0.58, align: 'right' },
-        { label: '매칭', w: 0.55, align: 'center' },
-      ]
-    : [
+  const columns = [
         { label: '매체', w: 0.6 },
         { label: '캠페인', w: 1.7 },
         { label: '광고비', w: 0.95, align: 'right' },
@@ -498,19 +471,7 @@ function campaignSlide(pptx, data, page) {
         { label: 'CTR', w: 0.5, align: 'right' },
         { label: 'CPA', w: 0.9, align: 'right' },
       ];
-  const rows = top.map((c) =>
-    r.hasGa4
-      ? [
-          c.mediaLabel,
-          { text: c.campaign, color: THEME.ink },
-          won(c.cost),
-          formatNumber(c.clicks),
-          c.matched ? formatNumber(c.sessions) : '-',
-          c.matched ? (r.hasRevenue ? pct(c.ga4Roas, 0) : formatNumber(c.keyEvents)) : '-',
-          { text: c.matched ? '매칭' : '미매칭', color: c.matched ? THEME.up : THEME.down },
-        ]
-      : [c.mediaLabel, { text: c.campaign, color: THEME.ink }, won(c.cost), formatNumber(c.clicks), pct(c.ctr, 2), won(c.cpa)]
-  );
+  const rows = top.map((c) => [c.mediaLabel, { text: c.campaign, color: THEME.ink }, won(c.cost), formatNumber(c.clicks), pct(c.ctr, 2), won(c.cpa)]);
   darkTable(slide, {
     x: LAYOUT.leftX,
     y: LAYOUT.bodyContentTop,
@@ -519,38 +480,11 @@ function campaignSlide(pptx, data, page) {
     rows,
   });
 
-  if (r.hasGa4) {
-    insightCard(slide, LAYOUT.rightX, LAYOUT.bodyContentTop, LAYOUT.rightW, 1.32, '분석 인사이트', r.insights.campaign, {
-      fs: 8.5,
-      maxLines: 3,
-      wrap: 2,
-    });
-    sectionLabel(slide, 'GA4 미매칭 유료 유입', LAYOUT.rightX, 3.78, LAYOUT.rightW, '세션 상위');
-    const unmatched = r.unmatchedGa4.slice(0, 3);
-    if (unmatched.length) {
-      darkTable(slide, {
-        x: LAYOUT.rightX,
-        y: 4.0,
-        rowH: 0.23,
-        fontSize: 7.5,
-        columns: [
-          { label: '소스/매체', w: 1.1 },
-          { label: 'GA4 캠페인', w: 1.27 },
-          { label: '세션', w: 0.55, align: 'right' },
-          { label: '사유', w: 1.1 },
-        ],
-        rows: unmatched.map((u) => [`${u.source} / ${u.medium}`, u.campaign, formatNumber(u.sessions), u.reason]),
-      });
-    } else {
-      slide.addText('미매칭 유료 유입이 없습니다.', T({ x: LAYOUT.rightX, y: 4.05, w: LAYOUT.rightW, h: 0.3, fontSize: 8.5, color: THEME.body }));
-    }
-  } else {
-    insightCard(slide, LAYOUT.rightX, LAYOUT.bodyContentTop, LAYOUT.rightW, 2.61, '분석 인사이트', r.insights.campaign, {
-      fs: 8.5,
-      maxLines: 5,
-      wrap: 2,
-    });
-  }
+  insightCard(slide, LAYOUT.rightX, LAYOUT.bodyContentTop, LAYOUT.rightW, 2.61, '분석 인사이트', r.insights.campaign, {
+    fs: 8.5,
+    maxLines: 5,
+    wrap: 2,
+  });
 
   addFooter(slide, page, data);
 }
@@ -576,7 +510,7 @@ async function buildIntegratedPresentation(data) {
   mediaOverview(pptx, deckData, page++);
   dailyTrend(pptx, deckData, page++);
   if (data.integration.hasGa4) mediaGa4(pptx, deckData, page++);
-  campaignSlide(pptx, deckData, page++);
+  else campaignSlide(pptx, deckData, page++);
 
   if (data.ga4Report) {
     pptBuilder.appendGa4Report(pptx, data.ga4Report, page);

@@ -154,9 +154,6 @@ const Media = (() => {
     );
 
     $('includeGa4Sections').addEventListener('change', syncCompareField);
-    $('mediaCampaignSelect').addEventListener('change', () => {
-      if (st.ga4Mode !== 'none') preview();
-    });
 
     $('integratedPreviewBtn').addEventListener('click', preview);
     $('integratedPptBtn').addEventListener('click', () =>
@@ -242,7 +239,6 @@ const Media = (() => {
     st.ga4Mode = mode;
     document.querySelectorAll('#ga4ModeGroup .chip').forEach((c) => c.classList.toggle('is-active', c.dataset.mode === mode));
     $('ga4PropertyBox').classList.toggle('hidden', mode !== 'ga4');
-    $('mediaCampaignBox').classList.toggle('hidden', mode === 'none');
     $('includeGa4Sections').disabled = mode === 'none';
     if (mode === 'none') $('includeGa4Sections').checked = false;
     syncCompareField();
@@ -257,8 +253,8 @@ const Media = (() => {
     btn.disabled = !enabled;
     btn.title = enabled ? '' : 'GA4 연동(속성 연동 또는 샘플 GA4) 시 사용할 수 있습니다.';
     $('xlsxHint').textContent = enabled
-      ? '표준 데이터 엑셀: 업로드한 전체 기간 · 매체 데이터만 / GA4 통합 분석 엑셀: 선택 기간 · 매체×GA4 시트 3개 추가'
-      : 'GA4 통합 분석 엑셀은 2단계에서 GA4를 연동하면 사용할 수 있습니다. (매체×GA4 · 캠페인 매칭 · 미매칭 유입 시트 추가)';
+      ? '표준 데이터 엑셀: 업로드한 전체 기간 · 매체 데이터만 / GA4 통합 분석 엑셀: 선택 기간 · 매체별 GA4 지표 추가'
+      : 'GA4 통합 분석 엑셀은 GA4 연동(속성 연동 또는 샘플 GA4) 후 사용할 수 있습니다.';
   }
 
   function syncCompareField() {
@@ -296,7 +292,6 @@ const Media = (() => {
       startDate: $('mediaStart').value || undefined,
       endDate: $('mediaEnd').value || undefined,
       includeGa4Sections: $('includeGa4Sections').checked,
-      selectedCampaign: $('mediaCampaignSelect').value || 'all',
     };
     if (st.ga4Mode === 'demo') body.demoGa4 = true;
     if (st.ga4Mode === 'ga4') {
@@ -591,24 +586,7 @@ const Media = (() => {
       .join('')}</ul></div>`;
   }
 
-  function populateCampaignSelect(campaignList = [], selected = 'all') {
-    const select = $('mediaCampaignSelect');
-    if (!select) return;
-    const current = selected || select.value || 'all';
-    const options = [
-      '<option value="all">전체 (모든 캠페인)</option>',
-      ...campaignList.map(
-        (c) => `<option value="${escapeHtml(c.campaign)}">${escapeHtml(c.campaign)} (${fmtNum(c.sessions)} 세션)</option>`
-      ),
-    ];
-    select.innerHTML = options.join('');
-    select.value = current;
-  }
-
   function renderIntegrated(d) {
-    if (d.hasGa4 && d.availableGa4Campaigns) {
-      populateCampaignSelect(d.availableGa4Campaigns, d.selectedCampaign);
-    }
     const t = d.totals;
     const ga4 = d.hasGa4;
     const kpis = [
@@ -650,7 +628,7 @@ const Media = (() => {
       )
       .join('');
 
-    const campaignRows = d.byCampaign
+    const campaignRows = (ga4 ? [] : d.byCampaign || [])
       .slice(0, 15)
       .map(
         (c) => `
@@ -669,21 +647,6 @@ const Media = (() => {
         </tr>`
       )
       .join('');
-
-    const unmatched = ga4 && d.unmatchedGa4.length
-      ? `
-        <h4 class="sub-title">GA4 미매칭 유료 유입</h4>
-        <div class="table-wrap"><table class="data">
-          <thead><tr><th>소스 / 매체</th><th>GA4 캠페인</th><th>사유</th><th class="num">세션</th><th class="num">전환</th></tr></thead>
-          <tbody>${d.unmatchedGa4
-            .slice(0, 8)
-            .map(
-              (u) => `<tr><td>${escapeHtml(u.source)} / ${escapeHtml(u.medium)}</td><td class="name">${escapeHtml(u.campaign)}</td>
-                <td>${escapeHtml(u.reason)}</td><td class="num">${num(u.sessions)}</td><td class="num">${num(u.keyEvents)}</td></tr>`
-            )
-            .join('')}</tbody>
-        </table></div>`
-      : '';
 
     $('integratedResult').innerHTML = `
       <article class="card card--accent">
@@ -716,16 +679,13 @@ const Media = (() => {
         ${insightList('일별 추이', d.insights.daily)}
         ${ga4 ? insightList('매체 × GA4', d.insights.integration) : ''}
 
-        <h4 class="sub-title">캠페인 ${ga4 ? `매칭 (${d.matchStats.matched}/${d.matchStats.campaigns} · 광고비 기준 ${pct(d.matchStats.matchedCostShare)})` : '성과'}</h4>
-        <div class="table-wrap"><table class="data">
-          <thead><tr>
-            <th>매체</th><th>캠페인</th><th class="num">광고비</th><th class="num">클릭</th>
-            ${ga4 ? `<th class="num">GA4 세션</th><th class="num">${d.hasRevenue ? 'ROAS' : '전환'}</th><th>매칭</th>` : '<th class="num">CTR</th><th class="num">CPA</th>'}
-          </tr></thead>
-          <tbody>${campaignRows}</tbody>
-        </table></div>
-        ${insightList('캠페인', d.insights.campaign)}
-        ${unmatched}
+        ${!ga4 ? `
+          <h4 class="sub-title">캠페인 성과</h4>
+          <div class="table-wrap"><table class="data">
+            <thead><tr><th>매체</th><th>캠페인</th><th class="num">광고비</th><th class="num">클릭</th><th class="num">CTR</th><th class="num">CPA</th></tr></thead>
+            <tbody>${campaignRows}</tbody>
+          </table></div>
+          ${insightList('캠페인', d.insights.campaign)}` : ''}
       </article>`;
   }
 

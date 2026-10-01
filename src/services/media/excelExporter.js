@@ -7,7 +7,7 @@ const { STANDARD_FIELDS, getMedia, fieldLabel } = require('../../config/mediaCon
  * 표준 통합 데이터 · 요약 엑셀 생성
  *
  * 시트: 요약 / 표준_통합데이터 / 일별_추이 / 캠페인별 / 업로드_로그
- *       (+ GA4 통합 시) 매체xGA4 / 캠페인_GA4매칭 / GA4_미매칭유입
+ *       (+ GA4 통합 시) 매체xGA4
  */
 
 const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDA291C' } };
@@ -231,39 +231,6 @@ function integrationSheets(wb, integration) {
     { label: '합계', ...integration.totals }
   );
 
-  const campaign = wb.addWorksheet('캠페인_GA4매칭');
-  writeTable(
-    campaign,
-    [
-      { header: '매체', key: 'mediaLabel', width: 10 },
-      { header: '캠페인', key: 'campaign', width: 30 },
-      { header: 'GA4 매칭', value: (r) => (r.matched ? '매칭' : '미매칭'), width: 10 },
-      { header: '광고비', key: 'cost', width: 15, fmt: 'money' },
-      { header: '클릭수', key: 'clicks', width: 11, fmt: 'int' },
-      { header: 'GA4 세션', key: 'sessions', width: 11, fmt: 'int' },
-      { header: '도달률', key: 'arrivalRate', width: 10, fmt: 'pct1' },
-      { header: 'GA4 전환', key: 'keyEvents', width: 10, fmt: 'int' },
-      { header: 'GA4 매출', key: 'revenue', width: 14, fmt: 'money' },
-      { header: 'GA4 ROAS', key: 'ga4Roas', width: 11, fmt: 'pct1' },
-    ],
-    integration.byCampaign
-  );
-
-  const unmatched = wb.addWorksheet('GA4_미매칭유입');
-  writeTable(
-    unmatched,
-    [
-      { header: 'GA4 소스', key: 'source', width: 20 },
-      { header: 'GA4 매체(medium)', key: 'medium', width: 16 },
-      { header: 'GA4 캠페인', key: 'campaign', width: 30 },
-      { header: '추정 매체', key: 'mediaLabel', width: 10 },
-      { header: '사유', key: 'reason', width: 30 },
-      { header: '세션', key: 'sessions', width: 10, fmt: 'int' },
-      { header: '전환', key: 'keyEvents', width: 10, fmt: 'int' },
-      { header: '매출', key: 'revenue', width: 14, fmt: 'money' },
-    ],
-    integration.unmatchedGa4
-  );
 }
 
 /**

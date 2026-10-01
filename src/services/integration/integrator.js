@@ -1,16 +1,13 @@
 'use strict';
 
-const { MEDIA, getMedia } = require('../../config/mediaConfig');
+const { MEDIA } = require('../../config/mediaConfig');
 const agg = require('../media/mediaAggregator');
 const { formatNumber, formatPercent, formatWon } = require('../../utils/format');
 
 /**
  * 매체 표준 데이터 × GA4 유료 유입 통합
  *
- * 매칭 규칙
- *  1) 매체   : GA4 sessionSource 가 MEDIA[].ga4Source 정규식과 일치하면 해당 매체 유입
- *  2) 일자   : 동일 일자
- *  3) 캠페인 : 같은 매체 안에서 캠페인명을 정규화(소문자 · 공백/_/-/. 제거)해 완전 일치
+ * GA4 sessionSource 를 매체로 분류해 매체·일자별로 합산한다.
  *
  * 파생 지표
  *  도달률       = GA4 세션 ÷ 매체 클릭 × 100   (100% 초과 가능: 재방문·다중 세션)
@@ -24,12 +21,6 @@ const ratio = agg.ratio;
 function classifySource(source) {
   const hit = MEDIA.find((m) => m.ga4Source && m.ga4Source.test(String(source || '')));
   return hit ? hit.id : null;
-}
-
-function normCampaign(name) {
-  return String(name || '')
-    .toLowerCase()
-    .replace(/[\s_\-.]+/g, '');
 }
 
 function emptyGa4() {
@@ -81,55 +72,24 @@ function correlation(xs, ys) {
 /**
  * @param {object[]} mediaRows 표준 행 (분석 기간으로 필터된 상태)
  * @param {object|null} ga4    fetchPaidTraffic() 결과 · 없으면 매체 단독 분석
- * @param {object} [options]   { selectedCampaign: 'all' | string }
  */
-function integrate(mediaRows, ga4, options = {}) {
-  const selectedCampaign = options.selectedCampaign || 'all';
+function integrate(mediaRows, ga4) {
   const summary = agg.buildMediaSummary(mediaRows);
   const uploaded = new Set(summary.byMedia.map((m) => m.media));
   const hasGa4 = Boolean(ga4);
 
-  // 1) GA4 에 존재하는 수집 캠페인 목록 도출
-  const ga4CampaignMap = new Map();
-  (ga4?.rows || []).forEach((r) => {
-    if (!r.campaign || r.campaign === '(not set)') return;
-    const prev = ga4CampaignMap.get(r.campaign) || 0;
-    ga4CampaignMap.set(r.campaign, prev + (r.sessions || 0));
-  });
-
-  const availableGa4Campaigns = Array.from(ga4CampaignMap.entries())
-    .sort((a, b) => b[1] - a[1])
-    .map(([campaign, sessions]) => ({ campaign, sessions }));
-
-  // 2) GA4 행 분류 및 매칭
+  // GA4 행을 매체와 일자 단위로 합산한다. 캠페인 차원은 사용하지 않는다.
   const ga4ByMedia = new Map();
   const ga4ByDate = new Map();
-  const ga4ByCampaign = new Map();
-  const unmatchedMap = new Map();
+  const otherSources = new Map();
   const matchedGa4 = emptyGa4();
 
   (ga4?.rows || []).forEach((row) => {
-    // 캠페인 선택 필터가 적용되어 있으면 해당 캠페인이 아닌 데이터는 건너뜀
-    if (selectedCampaign !== 'all' && row.campaign !== selectedCampaign) {
-      return;
-    }
-
     const mediaId = classifySource(row.source);
     if (!mediaId || !uploaded.has(mediaId)) {
-      const key = `${row.source}${row.medium}${row.campaign}`;
-      if (!unmatchedMap.has(key)) {
-        unmatchedMap.set(key, {
-          source: row.source,
-          medium: row.medium,
-          campaign: row.campaign,
-          media: mediaId,
-          mediaLabel: mediaId ? getMedia(mediaId).label : '-',
-          reasonCode: mediaId ? 'media' : 'rule',
-          reason: mediaId ? '미업로드 매체' : '매체 규칙 미일치',
-          ...emptyGa4(),
-        });
-      }
-      addGa4(unmatchedMap.get(key), row);
+      const key = `${row.source}\u0000${row.medium}`;
+      if (!otherSources.has(key)) otherSources.set(key, emptyGa4());
+      addGa4(otherSources.get(key), row);
       return;
     }
 
@@ -143,11 +103,6 @@ function integrate(mediaRows, ga4, options = {}) {
     if (!day.perMedia[mediaId]) day.perMedia[mediaId] = emptyGa4();
     addGa4(day.perMedia[mediaId], row);
 
-    const ckey = `${mediaId}_${normCampaign(row.campaign)}`;
-    if (!ga4ByCampaign.has(ckey)) {
-      ga4ByCampaign.set(ckey, { media: mediaId, campaign: row.campaign, source: row.source, medium: row.medium, ...emptyGa4() });
-    }
-    addGa4(ga4ByCampaign.get(ckey), row);
   });
 
   // 매체별
@@ -185,70 +140,11 @@ function integrate(mediaRows, ga4, options = {}) {
       });
     });
 
-  // 캠페인별 매칭: utm_source 기반으로 매체별 성과 매칭 연결
-  const usedGa4Campaigns = new Set();
-  const byCampaign = summary.byCampaign.map((c) => {
-    // 1) 캠페인명 완전일치 우선 시도
-    const exactKey = `${c.media}_${normCampaign(c.campaign)}`;
-    let hit = ga4ByCampaign.get(exactKey);
-    if (hit) {
-      usedGa4Campaigns.add(exactKey);
-    } else {
-      // 2) 매체별 utm_source 성과 연결 (매체별 GA4 성과 존재 시 매칭)
-      const mediaGa4 = ga4ByMedia.get(c.media);
-      if (mediaGa4 && mediaGa4.sessions > 0) {
-        // 해당 매체의 GA4 성과를 비율/전체로 유연 연결
-        hit = {
-          sessions: mediaGa4.sessions,
-          engagedSessions: mediaGa4.engagedSessions,
-          keyEvents: mediaGa4.keyEvents,
-          revenue: mediaGa4.revenue,
-        };
-      }
-    }
-    return deriveIntegrated({ ...c, ...emptyGa4(), ...(hit ? pickGa4(hit) : {}), matched: Boolean(hit) });
-  });
-
-  // 업로드 매체의 GA4 캠페인 중 매칭되지 않은 것
-  ga4ByCampaign.forEach((g, key) => {
-    if (usedGa4Campaigns.has(key)) return;
-    unmatchedMap.set(`c${key}`, {
-      source: g.source,
-      medium: g.medium,
-      campaign: g.campaign,
-      media: g.media,
-      mediaLabel: getMedia(g.media).label,
-      reasonCode: 'campaign',
-      reason: '캠페인명 불일치',
-      ...pickGa4(g),
-    });
-  });
-
-  const unmatchedGa4 = Array.from(unmatchedMap.values()).sort((a, b) => b.sessions - a.sessions);
-
   const totals = deriveIntegrated({ ...summary.totals, ...matchedGa4 });
-  const matchedCampaigns = byCampaign.filter((c) => c.matched);
-  const matchStats = {
-    campaigns: byCampaign.length,
-    matched: matchedCampaigns.length,
-    matchedCost: matchedCampaigns.reduce((s, c) => s + c.cost, 0),
-    matchedCostShare: ratio(matchedCampaigns.reduce((s, c) => s + c.cost, 0), summary.totals.cost, 100),
-    unmatchedCost: byCampaign.filter((c) => !c.matched).reduce((s, c) => s + c.cost, 0),
-    ga4MatchedSessionsShare: ratio(
-      matchedCampaigns.reduce((s, c) => s + c.sessions, 0),
-      matchedGa4.sessions,
-      100
-    ),
-  };
-
-  const otherPaidSessions = unmatchedGa4
-    .filter((u) => u.reasonCode !== 'campaign')
-    .reduce((s, u) => s + u.sessions, 0);
+  const otherPaidSessions = Array.from(otherSources.values()).reduce((sum, row) => sum + row.sessions, 0);
   const paidSessionsAll = matchedGa4.sessions + otherPaidSessions;
   const result = {
     hasGa4,
-    selectedCampaign,
-    availableGa4Campaigns,
     metricsUsed: ga4?.metricsUsed || [],
     hasRevenue: hasGa4 && (ga4.metricsUsed || []).includes('totalRevenue'),
     hasKeyEvents: hasGa4 && (ga4.metricsUsed || []).some((m) => m === 'keyEvents' || m === 'conversions'),
@@ -260,9 +156,7 @@ function integrate(mediaRows, ga4, options = {}) {
     totals,
     byMedia,
     byDate,
-    byCampaign,
-    unmatchedGa4,
-    matchStats,
+    byCampaign: summary.byCampaign,
     correlation: hasGa4
       ? correlation(
           byDate.map((d) => d.clicks),
@@ -272,15 +166,6 @@ function integrate(mediaRows, ga4, options = {}) {
   };
   result.insights = buildInsights(result);
   return result;
-}
-
-function pickGa4(g) {
-  return {
-    sessions: g.sessions,
-    engagedSessions: g.engagedSessions,
-    keyEvents: g.keyEvents,
-    revenue: g.revenue,
-  };
 }
 
 /* ──────────────────────────────────────────────────────────
@@ -353,17 +238,8 @@ function buildInsights(r) {
     if (r.paidShare !== null) integration.push(`사이트 전체 세션 중 유료 유입 비중 ${formatPercent(r.paidShare)}`);
   }
 
-  // 캠페인
-  const s = r.matchStats;
-  if (r.hasGa4 && s.campaigns) {
-    campaign.push(`캠페인 ${s.campaigns}개 중 ${s.matched}개가 GA4 캠페인명과 매칭 (광고비 기준 ${formatPercent(s.matchedCostShare || 0)})`);
-    const topUnmatched = r.byCampaign.find((c) => !c.matched);
-    if (topUnmatched) {
-      campaign.push(`미매칭 최대 광고비 캠페인 ${topUnmatched.campaign} ${formatWon(topUnmatched.cost)} — utm_campaign 값 점검`);
-    }
-    const best = extremes(r.byCampaign, 'ga4Roas', (c) => c.matched && c.revenue > 0);
-    if (best.max) campaign.push(`GA4 ROAS 최고 캠페인 ${best.max.campaign} ${formatPercent(best.max.ga4Roas, 0)}`);
-  } else if (r.byCampaign[0]) {
+  // 캠페인별 지표는 GA4 미연동 매체 단독 분석에서만 표시한다.
+  if (!r.hasGa4 && r.byCampaign[0]) {
     const top = r.byCampaign[0];
     campaign.push(`최대 집행 캠페인 ${top.campaign}(${top.mediaLabel}) ${formatWon(top.cost)} · 비중 ${formatPercent(top.costShare)}`);
     const cpaBest = extremes(r.byCampaign, 'cpa', (c) => c.conversions >= 3);
@@ -373,4 +249,4 @@ function buildInsights(r) {
   return { media, daily, integration, campaign };
 }
 
-module.exports = { integrate, classifySource, normCampaign, correlation };
+module.exports = { integrate, classifySource, correlation };

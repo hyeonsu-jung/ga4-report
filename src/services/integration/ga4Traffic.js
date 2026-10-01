@@ -9,7 +9,7 @@ const dataApi = google.analyticsdata('v1beta');
 /**
  * 매체 데이터와 결합할 GA4 유료 유입 데이터 조회
  *
- *   Dimension : date · sessionSource · sessionMedium · sessionCampaignName
+ *   Dimension : date · sessionSource · sessionMedium
  *   Metric    : sessions · engagedSessions · keyEvents · totalRevenue
  *   Filter    : sessionMedium 이 GA4_PAID_MEDIUM 정규식과 일치 (유료 유입)
  *
@@ -82,7 +82,6 @@ async function fetchPaidTraffic(auth, propertyId, range) {
         { name: 'date' },
         { name: 'sessionSource' },
         { name: 'sessionMedium' },
-        { name: 'sessionCampaignName' },
       ],
       metrics: (metricsUsed || m).map((name) => ({ name })),
       limit: PAGE_SIZE,
@@ -97,7 +96,6 @@ async function fetchPaidTraffic(auth, propertyId, range) {
         date: toIsoDate(d[0]?.value),
         source: d[1]?.value || '(not set)',
         medium: d[2]?.value || '(not set)',
-        campaign: d[3]?.value || '(not set)',
         ...pickMetrics(metricsUsed, row.metricValues),
       });
     });

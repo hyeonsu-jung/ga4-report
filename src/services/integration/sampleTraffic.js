@@ -3,7 +3,7 @@
 /**
  * 데모용 GA4 유료 유입 모의 데이터.
  * 업로드된 매체 표준 행을 바탕으로 fetchPaidTraffic() 과 같은 구조를 만든다.
- * 일부 캠페인은 utm_campaign 을 다르게 두어 '미매칭' 케이스도 함께 확인할 수 있게 한다.
+ * GA4 실제 조회와 같은 매체·일자 단위의 유료 유입 표본을 만든다.
  */
 
 const PROFILE = {
@@ -16,12 +16,6 @@ const PROFILE = {
   tiktok: { sources: [['tiktok', 'paid_social']], arrival: 0.45, cvr: 0.009, aov: 42000 },
   daangn: { sources: [['daangn', 'cpc']], arrival: 0.74, cvr: 0.012, aov: 39000 },
   etc: { sources: [['etc', 'cpc']], arrival: 0.6, cvr: 0.01, aov: 40000 },
-};
-
-/** utm_campaign 이 매체 캠페인명과 다르게 운영된 경우 (미매칭 데모) */
-const RENAMED = {
-  '파워링크_가을프로모션': 'powerlink_fall_promo',
-  '디스플레이_리마케팅': 'kakao_rmkt_sep',
 };
 
 function seeded(seed) {
@@ -38,19 +32,17 @@ function buildSampleTraffic(mediaRows) {
   mediaRows
     .filter((r) => r.date)
     .forEach((r) => {
-      const key = `${r.date}${r.media}${r.campaign}`;
-      if (!grouped.has(key)) grouped.set(key, { date: r.date, media: r.media, campaign: r.campaign, clicks: 0 });
+      const key = `${r.date}${r.media}`;
+      if (!grouped.has(key)) grouped.set(key, { date: r.date, media: r.media, clicks: 0 });
       grouped.get(key).clicks += r.clicks || 0;
     });
 
   const rows = [];
   grouped.forEach((g) => {
     const p = PROFILE[g.media] || PROFILE.etc;
-    const campaign = RENAMED[g.campaign] || g.campaign.toLowerCase();
     const sessionsTotal = Math.round(g.clicks * p.arrival * (0.85 + rand() * 0.3));
     let sourceList = [p.sources[0]];
     if (g.media === 'meta') sourceList = p.sources; // facebook + instagram
-    if (g.media === 'google' && /youtube/i.test(g.campaign)) sourceList = [['youtube', 'cpv']];
     sourceList.forEach(([source, medium], i) => {
       const share = sourceList.length === 1 ? 1 : i === 0 ? 0.64 : 0.36;
       const sessions = Math.round(sessionsTotal * share);
@@ -59,7 +51,6 @@ function buildSampleTraffic(mediaRows) {
         date: g.date,
         source,
         medium,
-        campaign,
         sessions,
         engagedSessions: Math.round(sessions * (0.45 + rand() * 0.25)),
         keyEvents,
@@ -68,7 +59,7 @@ function buildSampleTraffic(mediaRows) {
     });
   });
 
-  // 매체 규칙에 없는 소스의 유료 유입 (미매칭 데모)
+  // 매체 규칙에 없는 소스의 유료 유입 (유료 유입 비중 계산용)
   const dates = Array.from(new Set(rows.map((r) => r.date))).sort();
   dates.forEach((date) => {
     const sessions = Math.round(120 + rand() * 60);
@@ -76,7 +67,6 @@ function buildSampleTraffic(mediaRows) {
       date,
       source: 'mobon',
       medium: 'display',
-      campaign: 'retargeting_sep',
       sessions,
       engagedSessions: Math.round(sessions * 0.4),
       keyEvents: Math.round(sessions * 0.012),
