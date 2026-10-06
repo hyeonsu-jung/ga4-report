@@ -26,6 +26,13 @@ app.use(
   })
 );
 
+app.get('/download/introduction', (req, res, next) => {
+  const filePath = path.join(__dirname, '..', 'introduction', '마케팅_리포트_자동화_소개서.pptx');
+  res.download(filePath, '마케팅_리포트_자동화_소개서.pptx', (err) => {
+    if (err && !res.headersSent) next(err);
+  });
+});
+
 // 화면 파일은 매 요청 ETag 로 재검증해 업데이트 직후 이전 화면이 캐시로 남지 않게 한다.
 app.use(
   express.static(path.join(__dirname, '..', 'public'), {

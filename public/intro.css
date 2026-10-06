@@ -31,6 +31,7 @@ a { color: inherit; text-decoration: none; }
 .button--small { min-height: 38px; padding: 0 14px; gap: 14px; font-size: 12px; }
 .button--accent { background: var(--accent); color: white; }.button--accent:hover { background: #c82f25; }
 .button--dark { background: var(--ink); color: #fff; }.button--dark:hover { background: #303335; }
+.button--outline { border: 1px solid #d9dbd6; color: var(--ink); background: transparent; }.button--outline:hover { border-color: var(--ink); background: #fff; }
 .button--light { background: #fff; color: var(--ink); }.button--light:hover { background: #f3d8d4; }
 .menu-toggle { display: none; }
 
