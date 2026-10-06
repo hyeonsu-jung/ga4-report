@@ -59,6 +59,9 @@ h2, h3 { color: var(--dark); margin: 0; }
 .auth-area { display: flex; align-items: center; gap: 12px; font-size: 13px; }
 .auth-area .user { color: #d5e0f7; }
 .auth-area .user b { color: #fff; }
+.intro-link { color: #d5e0f7; font-size: 12px; white-space: nowrap; }
+.intro-link:hover { color: #fff; text-decoration: underline; }
+@media (max-width: 760px) { .intro-link { font-size: 11px; } }
 
 /* ── 레이아웃 ───────────────────────── */
 .layout {
