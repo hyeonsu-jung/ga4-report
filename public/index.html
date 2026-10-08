@@ -38,7 +38,9 @@
       <div id="loginGate" class="gate hidden">
         <h2>GA4 계정으로 로그인</h2>
         <p>보고서를 생성할 GA4 속성에 접근 권한이 있는 Google 계정으로 로그인하세요.</p>
+        <div id="loginError" class="status is-error hidden" role="alert"></div>
         <a class="btn btn--primary btn--lg" href="/auth/google">Google 계정으로 GA4 로그인</a>
+        <p class="gate__permission-note"><strong>로그인 전 확인</strong><br />Google 권한 화면에서 <b>Google 애널리틱스 데이터 확인 및 다운로드</b> 항목을 체크한 뒤 계속을 눌러주세요.</p>
         <p class="gate__note">읽기 전용 권한(analytics.readonly)만 요청합니다.</p>
         <p class="gate__note">
           연동 전 결과 형태만 확인하려면
@@ -149,7 +151,7 @@
           </div>
           <div id="ga4PropertyBox" class="hidden">
             <div id="mediaLoginNote" class="meta-box hidden">
-              GA4 로그인이 필요합니다. <a href="/auth/google">Google 계정으로 로그인</a>
+              GA4 로그인이 필요합니다. Google 권한 화면에서 <strong>Google 애널리틱스 데이터 확인 및 다운로드</strong>를 체크해야 합니다. <a href="/auth/google">Google 계정으로 로그인</a>
             </div>
             <div class="field" id="mediaPropertyField">
               <label for="mediaPropertySelect">GA4 속성</label>
@@ -214,6 +216,16 @@
       <p id="overlayText">GA4 데이터를 수집하고 있습니다…</p>
     </div>
   </div>
+
+  <dialog id="ga4PermissionDialog" class="permission-dialog" aria-labelledby="permissionDialogTitle">
+    <div class="permission-dialog__mark" aria-hidden="true">GA4</div>
+    <h2 id="permissionDialogTitle">Google 권한 항목을 확인해 주세요</h2>
+    <p>다음 화면에서 <strong>Google 애널리틱스 데이터 확인 및 다운로드</strong> 항목에 체크한 뒤 <b>계속</b>을 눌러야 GA4 데이터 조회와 보고서 생성이 가능합니다.</p>
+    <div class="permission-dialog__actions">
+      <button type="button" class="btn btn--ghost" id="cancelGoogleLogin">취소</button>
+      <button type="button" class="btn btn--primary" id="continueGoogleLogin">Google 로그인 진행</button>
+    </div>
+  </dialog>
 
   <script src="/app.js"></script>
   <script src="/media.js"></script>

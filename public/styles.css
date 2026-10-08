@@ -96,6 +96,16 @@ h2, h3 { color: var(--dark); margin: 0; }
 .gate h2 { font-size: 18px; margin-bottom: 8px; }
 .gate p { color: var(--muted); margin: 0 0 20px; }
 .gate__note { font-size: 12px; margin-top: 14px; }
+.gate .gate__permission-note { margin: 17px 0 0; padding: 11px 12px; border: 1px solid #f0d2a8; border-radius: 8px; background: #fff9ee; color: #6d4c1d; font-size: 12px; line-height: 1.7; text-align: left; }
+.gate__permission-note strong { color: #a65a00; }
+.permission-dialog { width: min(440px, calc(100% - 32px)); padding: 26px; border: 1px solid var(--line); border-radius: 14px; color: var(--body); box-shadow: 0 22px 70px rgba(14, 26, 50, .24); }
+.permission-dialog::backdrop { background: rgba(18, 27, 43, .52); }
+.permission-dialog__mark { display: inline-grid; place-items: center; width: 38px; height: 30px; margin-bottom: 14px; border-radius: 7px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; }
+.permission-dialog h2 { margin: 0 0 10px; color: var(--dark); font-size: 18px; }
+.permission-dialog p { margin: 0; font-size: 13px; line-height: 1.8; }
+.permission-dialog p strong { color: var(--primary); }
+.permission-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 23px; }
+.permission-dialog__actions .btn { min-width: 100px; }
 
 /* ── 스텝 ───────────────────────────── */
 .step { border-top: 1px solid var(--line); padding: 16px 0; }

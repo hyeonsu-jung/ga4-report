@@ -5,6 +5,9 @@ const config = require('../config');
 const googleAuth = require('../services/googleAuth');
 
 const router = express.Router();
+const ANALYTICS_READONLY_SCOPE = 'https://www.googleapis.com/auth/analytics.readonly';
+const MISSING_ANALYTICS_PERMISSION =
+  'Google 권한 화면에서 “Google 애널리틱스 데이터 확인 및 다운로드” 항목을 체크해야 합니다. 해당 항목을 선택한 뒤 다시 로그인해 주세요.';
 
 /** 1) GA4 로그인 시작 */
 router.get('/google', (req, res) => {
@@ -23,7 +26,8 @@ router.get('/google/callback', async (req, res) => {
   const { code, state, error } = req.query;
 
   if (error) {
-    return res.redirect(`/?auth_error=${encodeURIComponent(String(error))}`);
+    const message = error === 'access_denied' ? MISSING_ANALYTICS_PERMISSION : String(error);
+    return res.redirect(`/?auth_error=${encodeURIComponent(message)}`);
   }
   if (!code) {
     return res.redirect('/?auth_error=' + encodeURIComponent('인증 코드가 없습니다.'));
@@ -34,6 +38,12 @@ router.get('/google/callback', async (req, res) => {
 
   try {
     const tokens = await googleAuth.exchangeCode(String(code));
+    const grantedScopes = String(tokens.scope || '').split(/\s+/);
+    if (!grantedScopes.includes(ANALYTICS_READONLY_SCOPE)) {
+      delete req.session.oauthState;
+      return res.redirect(`/?auth_error=${encodeURIComponent(MISSING_ANALYTICS_PERMISSION)}`);
+    }
+
     delete req.session.oauthState;
     req.session.tokens = tokens;
 

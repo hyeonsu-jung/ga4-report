@@ -17,6 +17,18 @@ const state = {
 };
 
 const $ = (id) => document.getElementById(id);
+let pendingGoogleLoginHref = '';
+let pendingMediaLogin = false;
+
+function clearPendingGoogleLogin() {
+  if (pendingMediaLogin) {
+    try {
+      sessionStorage.removeItem('returnView');
+    } catch (err) { /* 저장소 사용 불가 */ }
+  }
+  pendingGoogleLoginHref = '';
+  pendingMediaLogin = false;
+}
 
 /* ────────────────────────────────────────────────────────
  * 공통 유틸
@@ -108,7 +120,9 @@ async function init() {
 function handleAuthRedirect() {
   const params = new URLSearchParams(location.search);
   if (params.has('auth_error')) {
-    setTimeout(() => setStatus(`로그인 실패: ${params.get('auth_error')}`, 'error'), 100);
+    const loginError = $('loginError');
+    loginError.textContent = `로그인 실패: ${params.get('auth_error')}`;
+    loginError.classList.remove('hidden');
   }
   if (params.has('auth') || params.has('auth_error')) {
     history.replaceState(null, '', location.pathname);
@@ -279,6 +293,28 @@ async function refreshRange() {
  * 이벤트
  * ──────────────────────────────────────────────────────── */
 function bindEvents() {
+  const permissionDialog = $('ga4PermissionDialog');
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest('a[href="/auth/google"]');
+    if (!link || !permissionDialog) return;
+    event.preventDefault();
+    pendingGoogleLoginHref = link.href;
+    pendingMediaLogin = Boolean(link.closest('#mediaLoginNote'));
+    permissionDialog.showModal();
+  });
+
+  $('cancelGoogleLogin').addEventListener('click', () => {
+    clearPendingGoogleLogin();
+    permissionDialog.close();
+  });
+  permissionDialog.addEventListener('cancel', clearPendingGoogleLogin);
+  $('continueGoogleLogin').addEventListener('click', () => {
+    const href = pendingGoogleLoginHref;
+    pendingGoogleLoginHref = '';
+    pendingMediaLogin = false;
+    location.assign(href || '/auth/google');
+  });
+
   $('presetGroup').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-preset]');
     if (!btn) return;
